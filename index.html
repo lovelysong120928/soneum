@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>손이음 | 양방향 수어 소통 MVP</title>
+<style>
+  :root{--ink:#153b39;--muted:#627b76;--teal:#087e74;--navy:#285b73;--line:#dbeae6;--bg:#eff7f4;--white:#fff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;color:var(--ink)}
+  button,input{font:inherit}button{cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}
+  .top{background:linear-gradient(110deg,#087e74,#15536a);color:white;padding:23px 18px 19px}
+  .top-inner{max-width:1220px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .logo{font-size:28px;font-weight:800}.tagline{margin-top:4px;font-size:13px;color:#d9f2ec}
+  .sdg{font-size:12px;border:1px solid #ffffff55;border-radius:999px;padding:7px 11px}
+  .shell{max-width:1220px;margin:20px auto 34px;padding:0 16px}
+  .tabs{display:flex;gap:10px;margin-bottom:17px}
+  .tab{flex:1;border:1px solid var(--line);padding:16px 8px;background:white;color:#47635c;border-radius:12px;font-weight:800}
+  .tab[aria-selected="true"]{background:var(--teal);color:white;border-color:var(--teal);box-shadow:0 3px 12px #087e7425}
+  .view[hidden]{display:none!important}
+  .sign-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr);gap:16px;align-items:start}
+  .voice-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .card{background:white;border:1px solid var(--line);border-radius:17px;padding:19px;box-shadow:0 4px 15px #163e3410;min-width:0}
+  .card h2{font-size:20px;margin:0 0 8px}.card h3{font-size:16px;margin:0 0 8px}
+  .sub{color:var(--muted);line-height:1.6;font-size:14px;margin:0 0 14px}
+  .camera-box{position:relative;background:#173336;aspect-ratio:4/3;overflow:hidden;border-radius:12px}
+  #camera,#overlay{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform:scaleX(-1)}
+  #cameraMessage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:25px;text-align:center;color:white;background:#142b2ccc}
+  [hidden]{display:none!important}
+  .camera-hud{position:absolute;bottom:10px;left:10px;right:10px;display:flex;gap:7px;pointer-events:none}
+  .chip{padding:6px 9px;background:#0f2c30c9;border:1px solid #ffffff33;color:white;border-radius:8px;font-size:12px}
+  .status{font-size:13px;white-space:pre-wrap;line-height:1.55;color:#446962;background:#edf6f3;border-radius:9px;padding:10px 12px;margin:12px 0}
+  .btn{border:0;background:var(--teal);color:white;font-weight:750;padding:12px 14px;border-radius:10px;min-height:43px}
+  .btn.secondary{background:var(--navy)}.btn.danger{background:#bd5a56}.btn.outline{background:white;color:var(--ink);border:1px solid #b5d0ca}
+  .full{width:100%}.button-row{display:flex;gap:8px;flex-wrap:wrap}.button-row>*{flex:1}
+  .divider{height:1px;background:var(--line);margin:18px 0}
+  .step-label{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+  .count{color:var(--teal);font-weight:800;font-size:14px}
+  .progress{height:9px;background:#e0ece8;border-radius:20px;overflow:hidden;margin:11px 0}
+  #progressBar{height:100%;width:0%;background:#0d9a88;transition:width .06s}
+  .result{background:#e9f6f0;border:1px solid #d1e8dc;border-radius:12px;padding:14px;min-height:85px;margin:10px 0 0}
+  .result strong{font-size:18px;display:block;margin-bottom:7px}.result p{margin:0;line-height:1.6;white-space:pre-wrap;font-size:13px;color:#46645e}
+  .range-row{display:flex;justify-content:space-between;align-items:center;margin:11px 0 4px;font-size:13px}
+  input[type=range]{width:100%;accent-color:var(--teal)}input[type=text]{width:100%;border:1px solid #bcd4ce;border-radius:10px;padding:13px;font-size:16px;margin:10px 0}
+  .input-select{display:block;width:100%;padding:12px;border:1px solid #bcd4ce;border-radius:10px;background:white;color:var(--ink);font-size:16px}
+  .counts{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}.counts span{flex:1;min-width:110px;text-align:center;font-size:12px;font-weight:700;background:#eff7f4;border-radius:8px;padding:9px 5px}
+
+  .note{font-size:12px;color:#687e78;line-height:1.7;margin:10px 0 0}
+  .voice-icon{font-size:40px;line-height:1;margin:10px 0}
+  .link{display:inline-block;background:var(--teal);color:white;text-decoration:none;padding:12px 16px;border-radius:10px;font-weight:700}
+  .help{background:#f2f8f6;border-radius:10px;padding:15px;font-size:14px;line-height:1.7}
+  .help ol{margin:0;padding-left:20px}footer{text-align:center;color:#768b84;font-size:12px;padding:10px 16px 28px}
+  @media(max-width:960px){.sign-grid{grid-template-columns:1fr 1fr}.camera-box{aspect-ratio:4/3}}
+  @media(max-width:780px){.sign-grid,.voice-grid{grid-template-columns:1fr}.camera-box{aspect-ratio:16/11}.top{padding:17px}.logo{font-size:24px}.shell{padding:0 11px}.card{padding:15px}.tabs{gap:7px}.tab{padding:12px 4px;font-size:13px}}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-inner"><div><div class="logo">🤟 손이음 <span style="font-size:13px;font-weight:400">v0.5.1</span></div><div class="tagline">서로 다른 언어, 하나로 이어지는 마음</div></div><span class="sdg">SDGs 10 · 불평등 감소</span></div></header>
+<main class="shell">
+  <nav class="tabs" aria-label="서비스 기능 선택" role="tablist">
+    <button class="tab" id="tab-sign" role="tab" aria-selected="true" aria-controls="panel-sign" type="button">📷 수어 동작 인식</button>
+    <button class="tab" id="tab-voice" role="tab" aria-selected="false" aria-controls="panel-voice" type="button">🎤 음성 → 수어</button>
+  </nav>
+
+  <section id="panel-sign" class="view" role="tabpanel" aria-labelledby="tab-sign">
+    <div class="sign-grid">
+      <div class="card">
+        <h2>📷 실시간 카메라</h2>
+        <p class="sub">카메라 안에 양손과 어깨가 보이도록 서 주세요. 좌측 화면에서 움직임을 확인하면서 오른쪽 버튼을 사용할 수 있습니다.</p>
+        <div class="camera-box">
+          <video id="camera" autoplay playsinline muted></video><canvas id="overlay"></canvas>
+          <div id="cameraMessage">카메라 접근 권한 확인 중...</div>
+          <div class="camera-hud"><span class="chip" id="handCount">양손 0 / 2</span><span class="chip" id="poseState">상체 대기</span></div>
+        </div>
+        <div class="status" id="cameraStatus" role="status">카메라를 준비하고 있습니다.</div>
+        <button class="btn outline" id="cameraButton" type="button">📷 카메라 연결/다시 시도</button>
+        <p class="note">손에 초록색·주황색 점과 팔에 파란색 선이 보이면 추적 중입니다. 얼굴 표정은 분석하지 않습니다.</p>
+      </div>
+
+      <div class="card">
+        <h2>🤟 동작 학습과 인식</h2>
+        <p class="sub">세 표현을 각각 선택해 학습한 뒤, 어느 표현인지 구별합니다. 카메라를 보면서 버튼을 사용하세요.</p>
+        <h3>① 학습할 표현 선택</h3>
+        <label for="gestureLabel" class="sub" style="display:block;margin-bottom:5px">카메라 앞에서 표현할 문장을 선택하세요.</label>
+        <select id="gestureLabel" class="input-select" aria-label="학습할 표현">
+          <option value="안녕하세요">안녕하세요</option>
+          <option value="감사합니다">감사합니다</option>
+          <option value="사랑합니다">사랑합니다</option>
+        </select>
+        <div class="step-label" style="margin-top:12px"><h3>선택한 표현의 학습 횟수</h3><span class="count" id="sampleCount">0 / 20회</span></div>
+        <div class="counts" aria-label="표현별 등록 현황">
+          <span id="count-hello">안녕하세요 0회</span>
+          <span id="count-thanks">감사합니다 0회</span>
+          <span id="count-love">사랑합니다 0회</span>
+        </div>
+        <button class="btn full" id="trainButton" type="button" disabled>🔴 선택한 표현 3초 등록</button>
+        <div class="progress"><div id="progressBar"></div></div>
+        <div class="status" id="recordStatus" role="status">동작을 등록할 준비 중입니다.</div>
+        <div class="divider"></div>
+        <h3>② 세 표현 중 어떤 동작인지 인식</h3>
+        <p class="note" id="readyHint">표현별로 최소 1회, 권장 5~10회 등록한 뒤 인식할 수 있습니다.</p>
+        <button class="btn secondary full" id="recognizeButton" type="button" disabled>✋ 3초 동작 인식하기</button>
+        <div class="result" aria-live="polite"><strong id="signResult">인식 대기 중</strong><p id="signDetail">세 표현의 동작을 각각 등록해 주세요.</p></div>
+        <div class="divider"></div>
+        <div class="range-row"><label for="threshold">③ 인식 허용 거리(실험용)</label><strong id="thresholdValue">0.22</strong></div>
+        <input type="range" id="threshold" min="0.10" max="0.80" step="0.01" value="0.22">
+        <p class="note">값이 작을수록 엄격합니다. '일치'는 저장한 움직임과 비슷하다는 뜻이며 수어 의미 번역의 정확성을 보증하지 않습니다.</p>
+        <div class="divider"></div>
+        <button class="btn danger" id="deleteButton" type="button">🗑 선택한 표현 데이터 삭제</button>
+        <button class="btn outline" id="exportButton" type="button">⬇ 학습 데이터 백업</button>
+        <p class="note">v0.4의 ‘안녕하세요’ 샘플은 최초 실행 시 자동으로 가져옵니다. 기존 저장 데이터는 지우지 않습니다. 데이터는 이 브라우저에 저장되고, 다른 기기나 배포 사이트와 자동 공유되지 않습니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="panel-voice" class="view" role="tabpanel" aria-labelledby="tab-voice" hidden>
+    <div class="voice-grid">
+      <div class="card">
+        <h2>🎤 음성 또는 문자 입력</h2>
+        <p class="sub">"안녕하세요", "감사합니다", "사랑합니다" 중 하나를 말하거나 입력하세요.</p>
+        <div class="voice-icon">🎙️</div>
+        <button class="btn" id="micButton" type="button">🎤 말하기 시작</button>
+        <div class="status" id="micStatus" role="status">마이크 대기 중</div>
+        <label for="speechInput"><strong>내가 전달하고 싶은 말</strong></label>
+        <input type="text" id="speechInput" value="안녕하세요" placeholder="말하고 싶은 문장을 입력하세요">
+        <button class="btn full" id="translateButton" type="button">🤟 수어 표현 찾기</button>
+      </div>
+      <div class="card">
+        <h2>📝 수어 표현 확인</h2>
+        <p class="sub">세 가지 표현을 입력하면 해당 한국수어사전 상세 페이지가 나타납니다.</p>
+        <div class="result"><strong id="speechResult">안녕하세요</strong><p id="speechDetail">수어 표현 찾기 버튼을 눌러 주세요.</p></div>
+        <div id="dictionaryArea" hidden style="margin-top:16px">
+          <p class="sub" id="dictionaryHint">선택한 표현의 한국수어사전 상세 페이지로 이동할 수 있습니다.</p>
+          <a class="link" id="dictionaryLink" href="https://sldict.korean.go.kr/" target="_blank" rel="noopener noreferrer">📖 수어 영상 확인하기</a>
+        </div>
+        <div class="divider"></div>
+        <div class="help"><strong>개발 범위 안내</strong><p style="margin:6px 0 0">음성을 문자로 변환하는 기능은 실제로 작동합니다(브라우저 지원 필요). 현재는 세 표현을 구별하고 사전으로 연결하는 학습용 시제품으로, 한국어 문장을 수어로 자동 합성하지는 않습니다.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+<footer>손이음 SonEum · 연속 동작 비교 기반 교육용 AI 시제품</footer>
+<script type="module">
+const $=id=>document.getElementById(id);
+const video=$('camera'),canvas=$('overlay'),ctx=canvas.getContext('2d');
+// 기존 v0.3 저장 데이터를 유지합니다.
+const STORAGE_KEY='soneum-expressions-0.5',LEGACY_STORAGE_KEY='soneum-hello-0.3';
+const LABELS=['안녕하세요','감사합니다','사랑합니다'];
+const RECORD_MS=3000,FRAME_INTERVAL=100,RESAMPLED_FRAMES=30,MAX_SAMPLES=20;
+let stream=null,handModel=null,poseModel=null,detecting=false,starting=false;
+let latestHands=[],latestPose=null,latestFeature=null,latestFrameAt=0,lastVideoTime=-1,lastDetectAt=0;
+let templates=Object.fromEntries(LABELS.map(label=>[label,[]]));
+let selectedLabel=LABELS[0],recordLabel=LABELS[0];
+let busy=false,recording=false,recordMode='',recordFrames=[],recordStart=0,recordTimer=null;
+let threshold=0.22;
+const handEdges=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+const poseEdges=[[11,12],[11,13],[13,15],[12,14],[14,16]];
+
+// 탭은 페이지 이동 없이 화면만 바꿉니다.
+function selectTab(which){
+  const sign=which==='sign';
+  $('panel-sign').hidden=!sign;$('panel-voice').hidden=sign;
+  $('tab-sign').setAttribute('aria-selected',String(sign));
+  $('tab-voice').setAttribute('aria-selected',String(!sign));
+}
+$('tab-sign').addEventListener('click',()=>selectTab('sign'));
+$('tab-voice').addEventListener('click',()=>selectTab('voice'));
+
+function cameraStatus(s){$('cameraStatus').textContent=s;}
+function setRecordMessage(s){$('recordStatus').textContent=s;}
+function sampleValid(seq){
+  return Array.isArray(seq)&&seq.length===RESAMPLED_FRAMES&&
+    seq.every(row=>Array.isArray(row)&&row.length===98&&row.every(Number.isFinite));
+}
+function cleanSamples(data){
+  return Object.fromEntries(LABELS.map(label=>[
+    label,Array.isArray(data?.[label])?data[label].filter(sampleValid).slice(0,MAX_SAMPLES):[]
+  ]));
+}
+function updateButtons(){
+  const ready=!!handModel&&!!poseModel&&!busy;
+  $('trainButton').disabled=!ready||templates[selectedLabel].length>=MAX_SAMPLES;
+  $('recognizeButton').disabled=!ready||!LABELS.every(label=>templates[label].length>0);
+  $('deleteButton').disabled=busy;
+  $('exportButton').disabled=busy;
+  $('gestureLabel').disabled=busy;
+  const missing=LABELS.filter(label=>templates[label].length===0);
+  $('readyHint').textContent=missing.length
+    ? `인식하려면 ${missing.join(', ')} 표현을 최소 1회씩 등록해 주세요. (권장: 각 5~10회)`
+    : '✅ 세 표현의 샘플이 등록되었습니다. 정확도를 높이려면 각 5~10회 등록해 주세요.';
+}
+function updateSampleCount(){
+  $('sampleCount').textContent=`${templates[selectedLabel].length} / ${MAX_SAMPLES}회`;
+  $('count-hello').textContent=`안녕하세요 ${templates['안녕하세요'].length}회`;
+  $('count-thanks').textContent=`감사합니다 ${templates['감사합니다'].length}회`;
+  $('count-love').textContent=`사랑합니다 ${templates['사랑합니다'].length}회`;
+  updateButtons();
+}
+function loadSamples(){
+  try{
+    const saved=localStorage.getItem(STORAGE_KEY);
+    if(saved!==null){
+      templates=cleanSamples(JSON.parse(saved));
+    }else{
+      templates=cleanSamples({});
+      // 기존 버전의 안녕하세요 기록만 첫 실행 시 가져옵니다.
+      const legacy=JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY)||'[]');
+      if(Array.isArray(legacy))templates['안녕하세요']=legacy.filter(sampleValid).slice(0,MAX_SAMPLES);
+      persistSamples();
+    }
+  }catch(e){console.warn('학습 데이터 로딩 실패',e);templates=cleanSamples({});}
+  updateSampleCount();
+}
+function persistSamples(){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(templates));return true;}
+  catch(e){console.warn('학습 데이터 저장 실패',e);return false;}
+}
+$('gestureLabel').addEventListener('change',e=>{
+  selectedLabel=e.target.value;
+  setRecordMessage(`'${selectedLabel}' 표현을 선택했습니다. 카메라에 전체 동작을 보여 주세요.`);
+  updateSampleCount();
+});
+$('deleteButton').addEventListener('click',()=>{
+  if(busy||!confirm(`'${selectedLabel}' 학습 데이터 ${templates[selectedLabel].length}개를 지울까요?`))return;
+  templates[selectedLabel]=[];
+  persistSamples();updateSampleCount();
+  setRecordMessage(`'${selectedLabel}' 학습 데이터가 삭제되었습니다.`);
+  $('signResult').textContent='인식 대기 중';$('signDetail').textContent='표현별 학습 데이터를 확인해 주세요.';
+});
+$('exportButton').addEventListener('click',()=>{
+  const payload={app:'손이음',version:'0.5',exportedAt:new Date().toISOString(),samples:templates};
+  const blob=new Blob([JSON.stringify(payload)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');link.href=url;link.download='soneum-training-backup.json';link.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
+
+// 영상 권한을 먼저 요청하고, 허용된 뒤 MediaPipe를 로드합니다.
+async function startCamera(){
+  if(starting||stream?.active)return;
+  starting=true;$('cameraButton').disabled=true;
+  try{
+    if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia)throw Error('localhost 또는 HTTPS에서 실행하세요.');
+    cameraStatus('카메라 사용 권한 요청 중...');
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false});
+    video.srcObject=stream;await video.play();$('cameraMessage').hidden=true;
+    $('cameraButton').textContent='✅ 카메라 연결됨';
+    cameraStatus('카메라 연결 완료. 손·상체 인식 모델을 불러옵니다...');
+    if(!handModel||!poseModel)await loadModels();
+    else detectLoop();
+  }catch(e){
+    console.error('카메라/모델 오류:',e);
+    let msg=e.name==='NotAllowedError'?'브라우저에서 카메라 접근을 허용해 주세요.':e.message;
+    cameraStatus('오류: '+msg);
+    if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
+    $('cameraMessage').hidden=false;$('cameraMessage').textContent=msg;
+    $('cameraButton').textContent='📷 카메라 다시 시도';
+  }finally{starting=false;$('cameraButton').disabled=false;}
+}
+$('cameraButton').addEventListener('click',startCamera);
+
+async function loadModels(){
+  try{
+    cameraStatus('MediaPipe 라이브러리 로딩 중...');
+    // 이전에 동작한 CDN 버전을 유지합니다.
+    const mp=await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/vision_bundle.mjs');
+    const vision=await mp.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm');
+    cameraStatus('양손 인식 모델 로딩 중...');
+    handModel=await mp.HandLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',delegate:'CPU'},runningMode:'VIDEO',numHands:2});
+    cameraStatus('어깨·팔 인식 모델 로딩 중...');
+    poseModel=await mp.PoseLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',delegate:'CPU'},runningMode:'VIDEO',numPoses:1});
+    cameraStatus('✅ 양손·상체 인식 준비 완료!');updateButtons();detectLoop();
+  }catch(e){console.error(e);cameraStatus('AI 모델 로딩 실패: '+e.message+'\nF12 → Console 오류를 확인하세요.');}
+}
+function detectLoop(){
+  if(detecting)return;detecting=true;
+  function loop(){
+    if(!stream?.active){detecting=false;return;}
+    const now=performance.now();
+    if(handModel&&poseModel&&video.readyState>=2&&video.currentTime!==lastVideoTime&&now-lastDetectAt>=FRAME_INTERVAL){
+      lastVideoTime=video.currentTime;lastDetectAt=now;
+      try{
+        const h=handModel.detectForVideo(video,now),p=poseModel.detectForVideo(video,now);
+        latestHands=(h.landmarks||[]).map((points,i)=>({points,label:h.handednesses?.[i]?.[0]?.categoryName||''}));
+        latestPose=p.landmarks?.[0]||null;
+        $('handCount').textContent=`양손 ${latestHands.length} / 2`;
+        $('poseState').textContent=latestPose?'상체 인식 중':'상체 미인식';
+        latestFeature=makeFeature(latestHands,latestPose);latestFrameAt=now;
+        drawLandmarks();
+        if(recording&&latestFeature)recordFrames.push({time:now-recordStart,feature:latestFeature.values.slice(),bothHands:latestFeature.bothHands});
+      }catch(e){console.error('프레임 처리 오류',e);cameraStatus('인식 오류: '+e.message);}
+    }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+}
+function drawLandmarks(){
+  const w=video.videoWidth||640,h=video.videoHeight||480;
+  if(canvas.width!==w)canvas.width=w;if(canvas.height!==h)canvas.height=h;
+  ctx.clearRect(0,0,w,h);
+  const edge=(points,a,b,color)=>{if(!points?.[a]||!points?.[b])return;ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=3;ctx.moveTo(points[a].x*w,points[a].y*h);ctx.lineTo(points[b].x*w,points[b].y*h);ctx.stroke();};
+  const dot=(p,color)=>{if(!p)return;ctx.beginPath();ctx.fillStyle=color;ctx.arc(p.x*w,p.y*h,3.5,0,Math.PI*2);ctx.fill();};
+  if(latestPose){poseEdges.forEach(([a,b])=>edge(latestPose,a,b,'#57c6ff'));[11,12,13,14,15,16].forEach(i=>dot(latestPose[i],'#57c6ff'));}
+  latestHands.forEach((hand,i)=>{const color=i===0?'#39e6ab':'#ffad51';handEdges.forEach(([a,b])=>edge(hand.points,a,b,color));hand.points.forEach(p=>dot(p,color));});
+}
+function makeFeature(hands,pose){
+  if(!pose?.[11]||!pose?.[12]||![11,12,13,14,15,16].every(i=>Number.isFinite(pose[i]?.x)&&Number.isFinite(pose[i]?.y)))return null;
+  const ls=pose[11],rs=pose[12],cx=(ls.x+rs.x)/2,cy=(ls.y+rs.y)/2,sw=Math.hypot(ls.x-rs.x,ls.y-rs.y);
+  if(sw<.075)return null;
+  const norm=p=>[(p.x-cx)/sw,(p.y-cy)/sw],out=[];
+  [11,12,13,14,15,16].forEach(i=>out.push(...norm(pose[i])));
+  let left=hands.find(h=>h.label==='Left'),right=hands.find(h=>h.label==='Right');
+  // 손 라벨을 못 받거나 겹쳤을 때는 영상상의 좌우 순서로 대체합니다.
+  if(!left||!right||left===right){const sorted=[...hands].sort((a,b)=>a.points[0].x-b.points[0].x);left=sorted[0]||null;right=sorted[1]||null;}
+  for(const hand of [left,right]){
+    if(hand){out.push(1);hand.points.forEach(p=>out.push(...norm(p)));}
+    else{out.push(0);for(let j=0;j<42;j++)out.push(0);}
+  }
+  return {values:out,bothHands:!!left&&!!right};
+}
+
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function recordGesture(mode){
+  if(busy||!handModel||!poseModel)return;
+  if(mode==='train'&&templates[selectedLabel].length>=MAX_SAMPLES){setRecordMessage('선택한 표현은 20회까지 등록할 수 있습니다.');return;}
+  busy=true;recordLabel=selectedLabel;updateButtons();recordMode=mode;
+  $('progressBar').style.width='0%';
+  setRecordMessage(mode==='train'?`'${recordLabel}' 동작: 양손과 어깨를 감지할 때까지 최대 5초 대기합니다...`:'양손과 어깨를 감지할 때까지 최대 5초 대기합니다...');
+  if(mode==='recognize'){$('signResult').textContent='🔍 동작 감지 대기 중';$('signDetail').textContent='양손과 어깨를 카메라에 보여 주세요.';}
+  const started=performance.now();let ready=false;
+  while(performance.now()-started<5000){
+    if(latestFeature?.bothHands&&performance.now()-latestFrameAt<400){ready=true;break;}
+    await sleep(100);
+  }
+  if(!ready){
+    busy=false;updateButtons();const msg='양손과 어깨가 동시에 보이지 않습니다. 카메라에서 한 걸음 물러서서 다시 시도하세요.';setRecordMessage(msg);
+    if(mode==='recognize'){$('signResult').textContent='⚠️ 인식 준비 실패';$('signDetail').textContent=msg;}
+    return;
+  }
+  // 버튼 클릭 후 동작 시작을 준비할 수 있도록 2초 카운트다운
+  for(let sec=2;sec>=1;sec--){
+    setRecordMessage(`${sec}초 후 녹화 시작! 양손을 시작 위치에 놓아 주세요.`);
+    await sleep(1000);
+  }
+  if(!latestFeature?.bothHands || performance.now()-latestFrameAt>400){
+    busy=false;updateButtons();
+    setRecordMessage('시작 직전에 양손이 화면에서 사라졌습니다. 다시 시도하세요.');
+    return;
+  }
+  recordFrames=[];recordStart=performance.now();recording=true;
+  setRecordMessage(mode==='train'?`🔴 '${recordLabel}' 3초 녹화 중! 처음부터 끝까지 표현하세요.`:'🔵 3초 인식 중! 세 표현 중 하나를 보여 주세요.');
+  if(mode==='recognize'){$('signResult').textContent='🔴 움직임 기록 중...';$('signDetail').textContent='3초 후 결과가 나타납니다.';}
+  recordTimer=setInterval(()=>{
+    const elapsed=performance.now()-recordStart;
+    $('progressBar').style.width=Math.min(100,elapsed/RECORD_MS*100).toFixed(0)+'%';
+    if(elapsed>=RECORD_MS){clearInterval(recordTimer);recordTimer=null;finishRecording();}
+  },50);
+}
+function resampleSequence(frames,count){
+  const start=frames[0].time,end=frames[frames.length-1].time,duration=Math.max(1,end-start),res=[];let j=0;
+  for(let i=0;i<count;i++){
+    const target=start+duration*i/(count-1);
+    while(j<frames.length-2&&frames[j+1].time<target)j++;
+    const a=frames[j],b=frames[Math.min(j+1,frames.length-1)],r=Math.max(0,Math.min(1,(target-a.time)/Math.max(1,b.time-a.time)));
+    res.push(a.feature.map((v,k)=>v*(1-r)+b.feature[k]*r));
+  }
+  return res;
+}
+function finishRecording(){
+  recording=false;busy=false;updateButtons();
+  const fail=msg=>{setRecordMessage('⚠️ '+msg);if(recordMode==='recognize'){$('signResult').textContent='⚠️ 인식 실패';$('signDetail').textContent=msg;}};
+  if(recordFrames.length<12){fail('녹화 중 인식된 프레임이 부족합니다. 조명을 밝게 하고 다시 시도하세요.');return;}
+  const valid=recordFrames.filter(f=>f.bothHands),ratio=valid.length/recordFrames.length;
+  if(valid.length<12||ratio<.7){fail(`녹화된 프레임 중 양손 인식 비율은 ${(ratio*100).toFixed(0)}%입니다. 양손을 화면에 유지해 주세요.`);return;}
+  const seq=resampleSequence(valid,RESAMPLED_FRAMES);
+  if(recordMode==='train'){
+    templates[recordLabel].push(seq);const saved=persistSamples();updateSampleCount();
+    setRecordMessage(`✅ '${recordLabel}' ${templates[recordLabel].length}회 등록 완료!`+(saved?'':' (브라우저 저장 실패)'));
+    $('signResult').textContent=`'${recordLabel}' 등록 완료`;
+    $('signDetail').textContent=`'${recordLabel}' 동작 ${templates[recordLabel].length}개를 저장했습니다. 나머지 표현도 등록해 주세요.`;
+  }else recognizeSample(seq);
+}
+function frameDistance(a,b){let sum=0;for(let i=0;i<a.length;i++){sum+=(i===12||i===55)?2*Math.abs(a[i]-b[i]):Math.min(4,Math.abs(a[i]-b[i]));}return sum/a.length;}
+function dtwDistance(a,b){
+  const n=a.length,m=b.length,dp=Array.from({length:n+1},()=>Array(m+1).fill(Infinity)),steps=Array.from({length:n+1},()=>Array(m+1).fill(0));dp[0][0]=0;
+  for(let i=1;i<=n;i++)for(let j=1;j<=m;j++){
+    if(Math.abs(i/n-j/m)>.25)continue;
+    const previous=[[dp[i-1][j],steps[i-1][j]],[dp[i][j-1],steps[i][j-1]],[dp[i-1][j-1],steps[i-1][j-1]]].reduce((x,y)=>x[0]<=y[0]?x:y);
+    dp[i][j]=frameDistance(a[i-1],b[j-1])+previous[0];steps[i][j]=previous[1]+1;
+  }
+  return dp[n][m]/Math.max(1,steps[n][m]);
+}
+function recognizeSample(seq){
+  // 각 표현의 가까운 샘플 최대 3개의 평균 거리를 계산합니다.
+  const scores=LABELS.map(label=>{
+    const distances=templates[label].map(sample=>dtwDistance(seq,sample)).filter(Number.isFinite).sort((a,b)=>a-b);
+    const nearest=distances.slice(0,Math.min(3,distances.length));
+    const score=nearest.length?nearest.reduce((a,b)=>a+b,0)/nearest.length:Infinity;
+    return {label,score};
+  }).sort((a,b)=>a.score-b.score);
+  const best=scores[0],second=scores[1];
+  if(!Number.isFinite(best.score)){
+    $('signResult').textContent='⚠️ 비교 불가';
+    $('signDetail').textContent='등록 데이터를 확인하고 다시 학습해 주세요.';return;
+  }
+  const gap=second.score-best.score;
+  const accepted=best.score<=threshold&&gap>=Math.max(0.015,best.score*0.12);
+  if(accepted){
+    $('signResult').textContent=`🤟 ${best.label} (동작 패턴 유사)`;
+  }else if(best.score>threshold){
+    $('signResult').textContent='미등록 동작 또는 인식 불확실';
+  }else{
+    $('signResult').textContent='판별 보류: 표현 간 움직임이 비슷합니다';
+  }
+  $('signDetail').textContent=
+    scores.map(({label,score})=>`${label}: ${Number.isFinite(score)?score.toFixed(3):'데이터 없음'}`).join(' / ')+
+    `\n허용 거리: ${threshold.toFixed(2)} / 1·2위 거리 차이: ${gap.toFixed(3)}`+
+    '\n※ 한국수어 의미를 이해한 결과가 아닌 등록 동작의 유사도 비교입니다.';
+  setRecordMessage('✅ 세 표현에 대한 동작 비교가 완료되었습니다.');
+}
+$('trainButton').addEventListener('click',()=>recordGesture('train'));
+$('recognizeButton').addEventListener('click',()=>recordGesture('recognize'));
+$('threshold').addEventListener('input',e=>{threshold=Number(e.target.value);$('thresholdValue').textContent=threshold.toFixed(2);});
+
+const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+$('micButton').addEventListener('click',()=>{
+  if(!SpeechRecognition){$('micStatus').textContent='이 브라우저는 음성 인식을 지원하지 않습니다. 문자를 직접 입력하세요.';return;}
+  const r=new SpeechRecognition();r.lang='ko-KR';r.interimResults=false;
+  r.onresult=e=>{$('speechInput').value=e.results[0][0].transcript;$('micStatus').textContent='✅ 음성 인식 완료';translateSpeech();};
+  r.onerror=e=>{$('micStatus').textContent='마이크 오류: '+e.error;};
+  try{r.start();$('micStatus').textContent='🎤 듣고 있습니다...';}catch(e){$('micStatus').textContent='시작 실패: '+e.message;}
+});
+// 국립국어원 한국수어사전 상세 페이지 연결 (사용자가 제공한 링크)
+const SIGN_DICTIONARY = {
+  '안녕하세요': 'https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=3331&top_category=CTE&category=&searchKeyword=%EC%95%88%EB%85%95%ED%95%98%EC%84%B8%EC%9A%94&searchCondition=&search_gubun=&museum_type=00&current_pos_index=0',
+  '감사합니다': 'https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=2372&top_category=CTE&category=&searchKeyword=%EA%B0%90%EC%82%AC%ED%95%A9%EB%8B%88%EB%8B%A4&searchCondition=&search_gubun=&museum_type=00&current_pos_index=0',
+  '사랑합니다': 'https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=8240&top_category=CTE&category=&searchKeyword=%EC%82%AC%EB%9E%91&searchCondition=&search_gubun=&museum_type=00&current_pos_index=0'
+};
+
+function translateSpeech(){
+  const input=$('speechInput').value.trim();
+  const normalized=input.replace(/[\s.,!?~。！？]/g,'');
+  const url=SIGN_DICTIONARY[normalized];
+  $('speechResult').textContent=input||'입력 없음';
+  if(url){
+    $('speechDetail').textContent=`'${normalized}'에 해당하는 한국수어사전 상세 페이지를 찾았습니다.`;
+    $('dictionaryHint').textContent=normalized==='사랑합니다'
+      ? "국립국어원 사전의 '사랑' 항목으로 연결됩니다. 수어 영상을 확인하세요."
+      : `'${normalized}' 수어 영상을 사전 상세 페이지에서 확인하세요.`;
+    $('dictionaryLink').href=url;
+    $('dictionaryLink').textContent=`📖 '${normalized}' 수어 영상 열기`;
+    $('dictionaryArea').hidden=false;
+  }else{
+    $('speechDetail').textContent='현재는 안녕하세요·감사합니다·사랑합니다 세 표현만 지원합니다.';
+    $('dictionaryArea').hidden=true;
+    $('dictionaryLink').removeAttribute('href');
+  }
+}
+$('translateButton').addEventListener('click',translateSpeech);
+$('speechInput').addEventListener('input',translateSpeech);
+$('speechInput').addEventListener('keydown',e=>{if(e.key==='Enter')translateSpeech();});
+
+loadSamples();updateButtons();startCamera();
+window.addEventListener('pagehide',()=>{if(recordTimer)clearInterval(recordTimer);stream?.getTracks().forEach(t=>t.stop());handModel?.close();poseModel?.close();});
+</script>
+</body>
+</html>
